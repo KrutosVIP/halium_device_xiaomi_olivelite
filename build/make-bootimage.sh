@@ -16,6 +16,16 @@ case "$deviceinfo_arch" in
 esac
 
 if [ -d "$HERE/ramdisk-overlay" ]; then
+    if [ -d "$HERE/ramdisk-recovery-overlay" ] && [ -e "$HERE/ramdisk-overlay/ramdisk-recovery.img" ]; then
+        mkdir -p "$HERE/ramdisk-recovery"
+
+        cd "$HERE/ramdisk-recovery"
+        gzip -dc "$HERE/ramdisk-overlay/ramdisk-recovery.img" | cpio -i
+        cp -r "$HERE/ramdisk-recovery-overlay"/* "$HERE/ramdisk-recovery"
+
+        find . | cpio -o -H newc | gzip >> "$HERE/ramdisk-overlay/ramdisk-recovery.img"
+    fi
+
     cp "$RAMDISK" "${RAMDISK}-merged"
     RAMDISK="${RAMDISK}-merged"
     cd "$HERE/ramdisk-overlay"
