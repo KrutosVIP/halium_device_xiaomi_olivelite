@@ -36,6 +36,8 @@ identify_boot_mode() {
 		androidboot.mode=*)
 			android_bootmode=${x#*=}
 			;;
+		skip_initramfs)
+			skip_initramfs="y"
 		esac
 	done
 
@@ -43,18 +45,9 @@ identify_boot_mode() {
 		BOOT_MODE="android"
 	fi
 
-	## Some devices may be using 'bootreason', others 'boot_reason'
-	## XXX: Find a better way to handle device specifics here
-
-	# Krillin
-	if [ -f /sys/class/BOOT/BOOT/boot/boot_mode ]; then
-		boot_reason=$(cat /sys/class/BOOT/BOOT/boot/boot_mode)
-		case "${boot_reason}" in
-		1) BOOT_MODE="android" ;; # Meta
-		4) BOOT_MODE="android" ;; # Factory
-		8) BOOT_MODE="android" ;; # Power off charging
-		9) BOOT_MODE="android" ;; # Low power charging
-		esac
+	# System-as-root device
+	if [ -f /ramdisk-recovery.img ] && [ -z "$skip_initramfs" ]; then
+		BOOT_MODE="recovery"
 	fi
 
 	tell_kmsg "boot mode: $BOOT_MODE"
@@ -486,6 +479,16 @@ mountroot() {
 
 	identify_boot_mode
 	identify_file_layout
+
+	if [ "$BOOT_MODE" = "recovery" ]; then
+		tell_kmsg "Recovery boot mode for system-as-root devices"
+		mount -n -t tmpfs tmpfs ${rootmnt}
+		cd ${rootmnt}
+		cat /ramdisk-recovery.img | gzip -d | cpio -i
+		ln -s ../init ${rootmnt}/sbin/init
+		cd -
+		return 0
+	fi
 
 	# If both $imagefile and $_syspart are set, something is wrong. The strange
 	# output from this could be a clue in that situation.
