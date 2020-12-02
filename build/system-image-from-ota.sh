@@ -40,7 +40,7 @@ TOTAL=$(cat $COMMAND_FILE | wc -l)
 
 progress() {
     # Devide by 0 will make go boom!
-    if [ "$1" == "0" ]; then
+    if [ $1 -eq 0 ]; then
         # echo "0" > cmd_pipe
         @
     fi
