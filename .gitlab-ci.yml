@@ -12,7 +12,7 @@ build:
       - out/*
 
 flashable:
-  stage: build
+  stage: deploy
   script:
     - apt update
     - apt install -y img2simg jq sudo wget xz-utils
@@ -24,3 +24,16 @@ flashable:
       - out/boot.img
       - out/system.img
   when: manual
+
+devel-flashable:
+  stage: deploy
+  script:
+    - apt update
+    - apt install -y img2simg jq sudo wget xz-utils
+    - ./build/prepare-fake-ota.sh out/device_TP1803.tar.xz ota
+    - mkdir -p out
+    - ./build/system-image-from-ota.sh ota/ubuntu_command out
+  artifacts:
+    paths:
+      - out/boot.img
+      - out/system.img
