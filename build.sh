@@ -1,7 +1,8 @@
 #!/bin/bash
 set -xe
 
-OUT="$(realpath "$1" 2>/dev/null || echo 'out')"
+DEVICE=$1
+OUT="$(realpath "$2" 2>/dev/null || echo 'out')"
 mkdir -p "$OUT"
 
 TMP=$(mktemp -d)
@@ -11,6 +12,9 @@ SCRIPT="$(dirname "$(realpath "$0")")"/build
 mkdir "${TMP}/system"
 mkdir "${TMP}/partitions"
 
+if [ -f "${HERE}/deviceinfo-${DEVICE}" ]; then
+    ln -sf "deviceinfo-${DEVICE}" "${HERE}/deviceinfo"
+fi
 source "${HERE}/deviceinfo"
 
 case $deviceinfo_arch in
@@ -56,7 +60,7 @@ fi
 "$SCRIPT/make-bootimage.sh" "${TMPDOWN}/KERNEL_OBJ" "${TMPDOWN}/halium-boot-ramdisk.img" "${TMP}/partitions/boot.img"
 
 cp -av overlay/* "${TMP}/"
-"$SCRIPT/build-tarball-mainline.sh" pro1 "${OUT}" "${TMP}"
+"$SCRIPT/build-tarball-mainline.sh" "${DEVICE}" "${OUT}" "${TMP}"
 
 rm -r "${TMP}"
 rm -r "${TMPDOWN}"
