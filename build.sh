@@ -28,8 +28,12 @@ cd "$TMPDOWN"
     git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b pie-gsi --depth 1
     GCC_PATH="$TMPDOWN/aarch64-linux-android-4.9"
     if $deviceinfo_kernel_clang_compile; then
-        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b pie-gsi --depth 1
-        CLANG_PATH="$TMPDOWN/linux-x86/clang-4691093"
+        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b android10-gsi --depth 1
+        CLANG_PATH="$TMPDOWN/linux-x86/clang-r353983c"
+    fi
+    if [ "$deviceinfo_arch" == "aarch64" ]; then
+        git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 -b pie-gsi --depth 1
+        GCC_ARM32_PATH="$TMPDOWN/arm-linux-androideabi-4.9"
     fi
     git clone "$deviceinfo_kernel_source" -b $deviceinfo_kernel_source_branch --depth 1
 
@@ -50,7 +54,7 @@ fi
 if $deviceinfo_kernel_clang_compile; then
     CC=clang \
     CLANG_TRIPLE=${deviceinfo_arch}-linux-gnu- \
-    PATH="$CLANG_PATH/bin:$GCC_PATH/bin:${PATH}" \
+    PATH="$CLANG_PATH/bin:$GCC_PATH/bin:$GCC_ARM32_PATH/bin:${PATH}" \
     "$SCRIPT/build-kernel.sh" "${TMPDOWN}" "${TMP}/system"
 else
     PATH="$GCC_PATH/bin:${PATH}" \
