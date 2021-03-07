@@ -7,7 +7,7 @@ build:
     - apt install android-tools-mkbootimg bc bison build-essential ca-certificates cpio curl flex git kmod libssl-dev libtinfo5 python2 sudo unzip wget xz-utils -y --no-install-recommends
     - ln -sf python2.7 /usr/bin/python
     - wget https://raw.githubusercontent.com/LineageOS/android_system_core/lineage-17.1/mkbootimg/mkbootimg.py -O /usr/bin/mkbootimg
-    - ./build.sh
+    - ./build.sh citrus
   artifacts:
     paths:
       - out/*
@@ -17,7 +17,7 @@ flashable:
   script:
     - apt update
     - apt install -y img2simg jq sudo wget xz-utils
-    - ./build/fetch-and-prepare-latest-ota.sh "16.04/arm64/android9/devel" "pro1" ota
+    - ./build/fetch-and-prepare-latest-ota.sh "16.04/arm64/android9/devel" "citrus" ota
     - mkdir -p out
     - ./build/system-image-from-ota.sh ota/ubuntu_command out
   artifacts:
@@ -31,7 +31,7 @@ devel-flashable:
   script:
     - apt update
     - apt install -y img2simg jq sudo wget xz-utils
-    - ./build/prepare-fake-ota.sh out/device_TP1803.tar.xz ota
+    - ./build/prepare-fake-ota.sh out/device_citrus.tar.xz ota
     - mkdir -p out
     - ./build/system-image-from-ota.sh ota/ubuntu_command out
   artifacts:
