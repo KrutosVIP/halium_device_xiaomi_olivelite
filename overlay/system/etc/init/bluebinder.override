@@ -1,0 +1,5 @@
+pre-start script
+  /usr/bin/droid/bluebinder_wait.sh
+  sleep 2
+echo ON > /dev/wlan
+end script
