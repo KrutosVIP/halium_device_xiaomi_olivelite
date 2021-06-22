@@ -22,6 +22,8 @@
 - GPS
 - Notification LED
 - Vibration motor
+- SD Card
+- MTP
 
 **Notes:**
 - Audio cracks and pops
