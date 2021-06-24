@@ -24,6 +24,3 @@
 - Vibration motor
 - SD Card
 - MTP
-
-**Notes:**
-- Audio cracks and pops
