@@ -1,9 +1,10 @@
 #!/bin/bash
 set -ex
 
-KERNEL_OBJ=$(realpath $1)
-RAMDISK=$(realpath $2)
-OUT=$(realpath $3)
+TMPDOWN=$(realpath $1)
+KERNEL_OBJ=$(realpath $2)
+RAMDISK=$(realpath $3)
+OUT=$(realpath $4)
 
 HERE=$(pwd)
 source "${HERE}/deviceinfo"
@@ -60,6 +61,14 @@ else
     mkbootimg --kernel "$KERNEL" --ramdisk "$RAMDISK" --base $deviceinfo_flash_offset_base --kernel_offset $deviceinfo_flash_offset_kernel --ramdisk_offset $deviceinfo_flash_offset_ramdisk --second_offset $deviceinfo_flash_offset_second --tags_offset $deviceinfo_flash_offset_tags --pagesize $deviceinfo_flash_pagesize --cmdline "$deviceinfo_kernel_cmdline" -o "$OUT"
 fi
 
+if [ -n "$deviceinfo_bootimg_partition_size" ]; then
+    python2 "$TMPDOWN/avb/avbtool" add_hash_footer --image "$OUT" --partition_name boot --partition_size $deviceinfo_bootimg_partition_size
+
+    if [ -n "$deviceinfo_bootimg_append_vbmeta" ] && $deviceinfo_bootimg_append_vbmeta; then
+        python2 "$TMPDOWN/avb/avbtool" append_vbmeta_image --image "$OUT" --partition_size "$deviceinfo_bootimg_partition_size" --vbmeta_image "$TMPDOWN/vbmeta.img"
+    fi
+fi
+
 if [ -n "$deviceinfo_has_recovery_partition" ] && $deviceinfo_has_recovery_partition; then
     RECOVERY="$(dirname "$OUT")/recovery.img"
     RECOVERY_RAMDISK="$HERE/ramdisk-recovery.img"
@@ -74,4 +83,8 @@ if [ -n "$deviceinfo_has_recovery_partition" ] && $deviceinfo_has_recovery_parti
     fi
 
     mkbootimg --kernel "$KERNEL" --ramdisk "$RECOVERY_RAMDISK" --base $deviceinfo_flash_offset_base --kernel_offset $deviceinfo_flash_offset_kernel --ramdisk_offset $deviceinfo_flash_offset_ramdisk --second_offset $deviceinfo_flash_offset_second --tags_offset $deviceinfo_flash_offset_tags --pagesize $deviceinfo_flash_pagesize --cmdline "$deviceinfo_kernel_cmdline" -o "$RECOVERY" --os_version $deviceinfo_bootimg_os_version --os_patch_level $deviceinfo_bootimg_os_patch_level $EXTRA_ARGS
+
+    if [ -n "$deviceinfo_recovery_partition_size" ]; then
+        python2 "$TMPDOWN/avb/avbtool" add_hash_footer --image "$RECOVERY" --partition_name recovery --partition_size $deviceinfo_recovery_partition_size
+    fi
 fi
