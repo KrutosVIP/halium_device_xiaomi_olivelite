@@ -26,6 +26,8 @@ flashable:
   artifacts:
     paths:
       - out/boot.img
+      - out/dtbo.img
+      - out/recovery.img
       - out/system.img
   when: manual
 
@@ -43,4 +45,6 @@ devel-flashable:
   artifacts:
     paths:
       - out/boot.img
+      - out/dtbo.img
+      - out/recovery.img
       - out/ubuntu.img
