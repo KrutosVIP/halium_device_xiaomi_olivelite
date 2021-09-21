@@ -26,7 +26,7 @@ if [ -d "$HERE/ramdisk-recovery-overlay" ] && [ -e "$RECOVERY_RAMDISK" ]; then
     gzip -dc "$RECOVERY_RAMDISK" | cpio -i
     cp -r "$HERE/ramdisk-recovery-overlay"/* "$HERE/ramdisk-recovery"
 
-    find . | cpio -o -H newc | gzip >> "$RECOVERY_RAMDISK"
+    find . | cpio -o -H newc | gzip > "$RECOVERY_RAMDISK"
 fi
 
 if [ -d "$HERE/ramdisk-overlay" ]; then
