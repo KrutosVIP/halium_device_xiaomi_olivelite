@@ -1,0 +1,21 @@
+description "hfd service for feedback support"
+
+start on started dbus and android
+stop on stopping dbus
+
+pre-start script
+    while true
+    do
+        vbs_status=$(init.svc.vendor.qti.vibrator-1-2)
+        if [ "$vbs_status" = "running" ] ; then
+            echo "vibrator service running"
+            sleep 1
+            exit 0
+        fi
+        echo "Waiting for vibrator service"
+        sleep 1
+    done
+    exit 1
+end script
+
+exec hfd-service
