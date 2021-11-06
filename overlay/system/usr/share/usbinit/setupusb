@@ -2,7 +2,7 @@
 CONFIG_FS=/sys/kernel/config
 CONFIG_DIR=$CONFIG_FS/usb_gadget/
 GADGET_DIR=$CONFIG_DIR/g1
-CONFIG_NAME="c.1"
+CONFIG_NAME="b.1"
 
 SERIALNUMBER=`getprop ro.serialno`             # e.g. "0123456789ABCDEF"
 MANUFACTURER=`getprop ro.product.vendor.manufacturer` # e.g. "Volla"
