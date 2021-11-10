@@ -58,7 +58,8 @@ setup_boot() {
 		mkdir -p $GADGET_DIR/configs/$CONFIG_NAME/strings/0x409
 	fi
 
-	write $GADGET_DIR/idVendor 0x18D1
+	write $GADGET_DIR/idVendor 0x2717
+	write $GADGET_DIR/idProduct 0xFF20
 	write $GADGET_DIR/bcdDevice 0x0223
 	write $GADGET_DIR/bcdUSB 0x0200
 	write $GADGET_DIR/os_desc/use 1
