@@ -19,5 +19,5 @@ Release Date | Oct 2019
 ![Redmi_8](https://i01.appmifile.com/webfile/globalimg/products/pc/redmi-8/c3i-header.png "Redmi_8")
 
 Note : System/Vendor prebuilt files extracted from device or taken from [here.](https://github.com/AndroidDumps/xiaomi_olive_dump/)
-Recovery ramdisk and readme done from [this.](https://github.com/TeamWin/android_device_xiaomi_olivelite)
-Based on [miatoll] (https://gitlab.com/ubports/community-ports/android10/xiaomi-redmi-note-9-pro/xiaomi-miatoll)
+<br>Recovery ramdisk and readme done from [this.](https://github.com/TeamWin/android_device_xiaomi_olivelite)
+<br>Based on [miatoll](https://gitlab.com/ubports/community-ports/android10/xiaomi-redmi-note-9-pro/xiaomi-miatoll)
