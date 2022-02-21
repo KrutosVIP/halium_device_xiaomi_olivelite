@@ -30,6 +30,9 @@ fi
 
 HERE=$(pwd)
 SCRIPT="$(dirname "$(realpath "$0")")"/build
+if [ ! -d "$SCRIPT" ]; then
+    SCRIPT="$(dirname "$SCRIPT")"
+fi
 
 mkdir -p "${TMP}/system"
 mkdir -p "${TMP}/partitions"
@@ -46,8 +49,8 @@ cd "$TMPDOWN"
     [ -d aarch64-linux-android-4.9 ] || git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b pie-gsi --depth 1
     GCC_PATH="$TMPDOWN/aarch64-linux-android-4.9"
     if $deviceinfo_kernel_clang_compile; then
-        [ -d linux-x86 ] || git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b android10-gsi --depth 1
-        CLANG_PATH="$TMPDOWN/linux-x86/clang-r353983c"
+        [ -d linux-x86 ] || git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b android11-gsi --depth 1
+        CLANG_PATH="$TMPDOWN/linux-x86/clang-r383902"
     fi
     if [ "$deviceinfo_arch" == "aarch64" ]; then
         [ -d arm-linux-androideabi-4.9 ] || git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 -b pie-gsi --depth 1
@@ -64,17 +67,27 @@ cd "$TMPDOWN"
         [ -d libufdt ] || git clone https://android.googlesource.com/platform/system/libufdt -b pie-gsi --depth 1
         [ -d dtc ] || git clone https://android.googlesource.com/platform/external/dtc -b pie-gsi --depth 1
     fi
+
     [ -d "avb" ] || git clone https://android.googlesource.com/platform/external/avb -b android10-gsi --depth 1
+
+    if [ -n "$deviceinfo_kernel_use_dtc_ext" ] && $deviceinfo_kernel_use_dtc_ext; then
+        [ -f "dtc_ext" ] || curl --location https://android.googlesource.com/platform/prebuilts/misc/+/refs/heads/android10-gsi/linux-x86/dtc/dtc?format=TEXT | base64 --decode > dtc_ext
+        chmod +x dtc_ext
+    fi
 
     if [ ! -f "vbmeta.img" ] && [ -n "$deviceinfo_bootimg_append_vbmeta" ] && $deviceinfo_bootimg_append_vbmeta; then
         wget https://dl.google.com/developers/android/qt/images/gsi/vbmeta.img
     fi
-    
+
     ls .
 cd "$HERE"
 
 if [ -n "$deviceinfo_kernel_apply_overlay" ] && $deviceinfo_kernel_apply_overlay; then
     "$SCRIPT/build-ufdt-apply-overlay.sh" "${TMPDOWN}"
+fi
+
+if [ -n "$deviceinfo_kernel_use_dtc_ext" ] && $deviceinfo_kernel_use_dtc_ext; then
+    export DTC_EXT="$TMPDOWN/dtc_ext"
 fi
 
 if $deviceinfo_kernel_clang_compile; then
@@ -94,6 +107,8 @@ elif [ -n "$deviceinfo_dtbo" ]; then
 fi
 
 "$SCRIPT/make-bootimage.sh" "${TMPDOWN}" "${TMPDOWN}/KERNEL_OBJ" "${TMPDOWN}/halium-boot-ramdisk.img" "${TMP}/partitions/boot.img"
+
+cp "${TMP}/partitions/boot.img" "${OUT}"
 
 cp -av overlay/* "${TMP}/"
 "$SCRIPT/build-tarball-mainline.sh" "${deviceinfo_codename}" "${OUT}" "${TMP}"

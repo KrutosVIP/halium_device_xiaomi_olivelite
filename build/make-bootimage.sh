@@ -26,7 +26,18 @@ if [ -d "$HERE/ramdisk-recovery-overlay" ] && [ -e "$RECOVERY_RAMDISK" ]; then
     gzip -dc "$RECOVERY_RAMDISK" | cpio -i
     cp -r "$HERE/ramdisk-recovery-overlay"/* "$HERE/ramdisk-recovery"
 
-    find . | cpio -o -H newc | gzip > "$RECOVERY_RAMDISK"
+    # Set values in prop.default based on deviceinfo
+    sed -i 's@^\(ro\.product\.\(vendor\.\)\?brand=\).*$@\1'"$deviceinfo_manufacturer"'@' prop.default
+    sed -i 's@^\(ro\.product\.\(vendor\.\)\?manufacturer=\).*$@\1'"$deviceinfo_manufacturer"'@' prop.default
+    sed -i 's@^\(ro\.product\.vendor\.name=\).*$@\1'"$deviceinfo_manufacturer"'@' prop.default
+
+    sed -i 's@^\(ro\.product\.\(vendor\.\)\?device=\).*$@\1'"$deviceinfo_codename"'@' prop.default
+    sed -i 's@^\(ro\.product\.name=\).*$@\1'"$deviceinfo_codename"'@' prop.default
+    sed -i 's@^\(ro\.build\.product=\).*$@\1'"$deviceinfo_codename"'@' prop.default
+
+    sed -i 's@^\(ro\.product\.\(vendor\.\)\?model=\).*$@\1'"$deviceinfo_name"'@' prop.default
+
+    find . | cpio -o -H newc | gzip >> "$RECOVERY_RAMDISK"
 fi
 
 if [ -d "$HERE/ramdisk-overlay" ]; then
@@ -36,23 +47,22 @@ if [ -d "$HERE/ramdisk-overlay" ]; then
     find . | cpio -o -H newc | gzip >> "$RAMDISK"
 fi
 
-if [ "$deviceinfo_bootimg_header_version" -eq 2 ]; then
-    IMAGE_LIST="Image.gz Image"
+if [ -n "$deviceinfo_kernel_image_name" ]; then
+    KERNEL="$KERNEL_OBJ/arch/$ARCH/boot/$deviceinfo_kernel_image_name"
 else
-    IMAGE_LIST="Image.gz-dtb Image.gz Image"
-fi
-
-for image in $IMAGE_LIST; do
-    if [ -e "$KERNEL_OBJ/arch/$ARCH/boot/$image" ]; then
-        KERNEL="$KERNEL_OBJ/arch/$ARCH/boot/$image"
-        break
+    # Autodetect kernel image name for boot.img
+    if [ "$deviceinfo_bootimg_header_version" -eq 2 ]; then
+        IMAGE_LIST="Image.gz Image"
+    else
+        IMAGE_LIST="Image.gz-dtb Image.gz Image"
     fi
-done
 
-if [ -n "$deviceinfo_prebuilt_dtbo" ]; then
-    DTBO="$HERE/$deviceinfo_prebuilt_dtbo"
-elif [ -n "$deviceinfo_dtbo" ]; then
-    DTBO="$(dirname "$OUT")/dtbo.img"
+    for image in $IMAGE_LIST; do
+        if [ -e "$KERNEL_OBJ/arch/$ARCH/boot/$image" ]; then
+            KERNEL="$KERNEL_OBJ/arch/$ARCH/boot/$image"
+            break
+        fi
+    done
 fi
 
 if [ -n "$deviceinfo_bootimg_prebuilt_dtb" ]; then
@@ -64,14 +74,24 @@ elif [ -n "$deviceinfo_dtb" ]; then
     cat $DTBS > $DTB
 fi
 
-if [ "$deviceinfo_bootimg_header_version" -eq 2 ]; then
-    mkbootimg --kernel "$KERNEL" --ramdisk "$RAMDISK" --dtb "$DTB" --base $deviceinfo_flash_offset_base --kernel_offset $deviceinfo_flash_offset_kernel --ramdisk_offset $deviceinfo_flash_offset_ramdisk --second_offset $deviceinfo_flash_offset_second --tags_offset $deviceinfo_flash_offset_tags --dtb_offset $deviceinfo_flash_offset_dtb --pagesize $deviceinfo_flash_pagesize --cmdline "$deviceinfo_kernel_cmdline" -o "$OUT" --header_version $deviceinfo_bootimg_header_version --os_version $deviceinfo_bootimg_os_version --os_patch_level $deviceinfo_bootimg_os_patch_level
-else
-    mkbootimg --kernel "$KERNEL" --ramdisk "$RAMDISK" --base $deviceinfo_flash_offset_base --kernel_offset $deviceinfo_flash_offset_kernel --ramdisk_offset $deviceinfo_flash_offset_ramdisk --second_offset $deviceinfo_flash_offset_second --tags_offset $deviceinfo_flash_offset_tags --pagesize $deviceinfo_flash_pagesize --cmdline "$deviceinfo_kernel_cmdline" -o "$OUT"
+if [ -n "$deviceinfo_prebuilt_dtbo" ]; then
+    DTBO="$HERE/$deviceinfo_prebuilt_dtbo"
+elif [ -n "$deviceinfo_dtbo" ]; then
+    DTBO="$(dirname "$OUT")/dtbo.img"
 fi
 
+EXTRA_ARGS=""
+
+if [ "$deviceinfo_bootimg_header_version" -eq 2 ]; then
+    EXTRA_ARGS+=" --header_version $deviceinfo_bootimg_header_version --dtb $DTB --dtb_offset $deviceinfo_flash_offset_dtb"
+fi
+
+mkbootimg --kernel "$KERNEL" --ramdisk "$RAMDISK" --base $deviceinfo_flash_offset_base --kernel_offset $deviceinfo_flash_offset_kernel --ramdisk_offset $deviceinfo_flash_offset_ramdisk --second_offset $deviceinfo_flash_offset_second --tags_offset $deviceinfo_flash_offset_tags --pagesize $deviceinfo_flash_pagesize --cmdline "$deviceinfo_kernel_cmdline" -o "$OUT" --os_version $deviceinfo_bootimg_os_version --os_patch_level $deviceinfo_bootimg_os_patch_level $EXTRA_ARGS
+
 if [ -n "$deviceinfo_bootimg_partition_size" ]; then
-    python2 "$TMPDOWN/avb/avbtool" add_hash_footer --image "$OUT" --partition_name boot --partition_size $deviceinfo_bootimg_partition_size
+    EXTRA_ARGS=""
+    [ -f "$HERE/rsa4096_vbmeta.pem" ] && EXTRA_ARGS=" --key $HERE/rsa4096_vbmeta.pem --algorithm SHA256_RSA4096"
+    python2 "$TMPDOWN/avb/avbtool" add_hash_footer --image "$OUT" --partition_name boot --partition_size $deviceinfo_bootimg_partition_size $EXTRA_ARGS
 
     if [ -n "$deviceinfo_bootimg_append_vbmeta" ] && $deviceinfo_bootimg_append_vbmeta; then
         python2 "$TMPDOWN/avb/avbtool" append_vbmeta_image --image "$OUT" --partition_size "$deviceinfo_bootimg_partition_size" --vbmeta_image "$TMPDOWN/vbmeta.img"
@@ -94,6 +114,8 @@ if [ -n "$deviceinfo_has_recovery_partition" ] && $deviceinfo_has_recovery_parti
     mkbootimg --kernel "$KERNEL" --ramdisk "$RECOVERY_RAMDISK" --base $deviceinfo_flash_offset_base --kernel_offset $deviceinfo_flash_offset_kernel --ramdisk_offset $deviceinfo_flash_offset_ramdisk --second_offset $deviceinfo_flash_offset_second --tags_offset $deviceinfo_flash_offset_tags --pagesize $deviceinfo_flash_pagesize --cmdline "$deviceinfo_kernel_cmdline" -o "$RECOVERY" --os_version $deviceinfo_bootimg_os_version --os_patch_level $deviceinfo_bootimg_os_patch_level $EXTRA_ARGS
 
     if [ -n "$deviceinfo_recovery_partition_size" ]; then
-        python2 "$TMPDOWN/avb/avbtool" add_hash_footer --image "$RECOVERY" --partition_name recovery --partition_size $deviceinfo_recovery_partition_size
+        EXTRA_ARGS=""
+        [ -f "$HERE/rsa4096_vbmeta.pem" ] && EXTRA_ARGS=" --key $HERE/rsa4096_vbmeta.pem --algorithm SHA256_RSA4096"
+        python2 "$TMPDOWN/avb/avbtool" add_hash_footer --image "$RECOVERY" --partition_name recovery --partition_size $deviceinfo_recovery_partition_size $EXTRA_ARGS
     fi
 fi

@@ -1,10 +1,29 @@
 #!/bin/bash
 
+HERE=$(pwd)
+source "${HERE}/deviceinfo"
+
 # Fetches android9 rootfs and generic system image to prepare flashable image from CI-built device tarball
 URL='https://system-image.ubports.com'
-ROOTFS_URL='https://ci.ubports.com/job/xenial-hybris-android9-android10-rootfs-arm64/lastSuccessfulBuild/artifact/ubuntu-touch-android9-arm64.tar.gz'
-DEVICE_GENERIC_URL='https://ci.ubports.com/job/UBportsCommunityPortsJenkinsCI/job/ubports%252Fcommunity-ports%252Fjenkins-ci%252Fgeneric_arm64/job/halium-10.0/lastSuccessfulBuild/artifact/halium_halium_arm64.tar.xz'
+ROOTFS_URL='https://ci.ubports.com/job/xenial-hybris-android9-rootfs-arm64/lastSuccessfulBuild/artifact/ubuntu-touch-android9-arm64.tar.gz'
 OTA_CHANNEL='16.04/arm64/android9/devel'
+
+case "$deviceinfo_bootimg_os_version" in
+    9)
+        DEVICE_GENERIC_URL='https://ci.ubports.com/job/UBportsCommunityPortsJenkinsCI/job/ubports%252Fcommunity-ports%252Fjenkins-ci%252Fgeneric_arm64/job/main/lastSuccessfulBuild/artifact/halium_halium_arm64.tar.xz'
+        ;;
+    10)
+        DEVICE_GENERIC_URL='https://ci.ubports.com/job/UBportsCommunityPortsJenkinsCI/job/ubports%252Fcommunity-ports%252Fjenkins-ci%252Fgeneric_arm64/job/halium-10.0/lastSuccessfulBuild/artifact/halium_halium_arm64.tar.xz'
+        ;;
+    11)
+        DEVICE_GENERIC_URL='https://ci.ubports.com/job/UBportsCommunityPortsJenkinsCI/job/ubports%252Fcommunity-ports%252Fjenkins-ci%252Fgeneric_arm64/job/halium-11.0/lastSuccessfulBuild/artifact/halium_halium_arm64.tar.xz'
+        ROOTFS_URL='https://ci.ubports.com/job/xenial-hybris-android9-android11-rootfs-arm64/lastSuccessfulBuild/artifact/ubuntu-touch-android9-arm64.tar.gz'
+        ;;
+    *)
+        echo "Unsupported Android version $deviceinfo_bootimg_os_version!"
+        exit 1
+        ;;
+esac
 
 DEVICE_TARBALL="$1"
 OUTPUT="$2"
@@ -36,6 +55,14 @@ wget "$ROOTFS_URL" -P "$OUTPUT"
 mkdir -p "$OUTPUT/rootfs/system"
 cd "$OUTPUT/rootfs"
 sudo tar xpzf "../$file" --numeric-owner -C system
+
+# Enable SSH and USB tethering for debugging in devel-flashable builds
+echo "start on startup" > system/etc/init/ssh.override
+echo "exec /usr/sbin/sshd -D -o PasswordAuthentication=yes -o PermitEmptyPasswords=yes" >> system/etc/init/ssh.override
+
+echo "start on startup" > system/etc/init/usb-tethering.conf
+echo "exec /bin/bash /usr/bin/usb-tethering" >> system/etc/init/usb-tethering.conf
+
 sudo XZ_OPT=-1 tar cJf "../rootfs.tar.xz" system
 cd -
 sudo rm -rf "./$OUTPUT/rootfs"
@@ -56,9 +83,6 @@ cp "$DEVICE_TARBALL" "$OUTPUT"
 touch "$OUTPUT/$file.asc"
 echo "update $file $file.asc" >> "$OUTPUT/ubuntu_command"
 
-device=${file%%.*} # remove extension from device tarball
-device=${device##*_} # remove part before _
-
 # Version tarball
 mkdir "$OUTPUT/version"
 cd "$OUTPUT/version"
@@ -69,7 +93,7 @@ base: system-image.ubports.com
 http_port: 80
 https_port: 443
 channel: $OTA_CHANNEL
-device: $device
+device: $deviceinfo_codename
 EOF
 
 mkdir -p system/etc/system-image/config.d
